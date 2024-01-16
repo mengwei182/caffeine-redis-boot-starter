@@ -39,9 +39,9 @@ public class CaffeineRedisCacheManager implements CacheManager {
         Cache cache = this.cacheMap.get(name);
         if (cache == null) {
             CaffeineCacheManager caffeineCacheManager = new CaffeineCacheManager();
-            CaffeineCache caffeineCache = (CaffeineCache) caffeineCacheManager.getCache(name + "::" + CaffeineCache.class.getName());
+            CaffeineCache caffeineCache = (CaffeineCache) caffeineCacheManager.getCache(name);
             RedisCacheManager redisCacheManager = RedisCacheManager.builder().cacheDefaults(redisCacheConfiguration).cacheWriter(RedisCacheWriter.lockingRedisCacheWriter(redisConnectionFactory)).build();
-            RedisCache redisCache = (RedisCache) redisCacheManager.getCache(name + "::" + RedisCache.class.getName());
+            RedisCache redisCache = (RedisCache) redisCacheManager.getCache(name);
             cache = this.cacheMap.computeIfAbsent(name, v -> new CaffeineRedisCache(name, caffeineCache, redisCache, redisTemplate, new DefaultCacheEventPublisher(redisTemplate)));
         }
         return cache;

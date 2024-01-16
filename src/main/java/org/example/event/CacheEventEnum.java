@@ -5,5 +5,5 @@ package org.example.event;
  * @since 2024/1/12
  */
 public enum CacheEventEnum {
-    PUT, EXPIRY, EVICT, CLEAR
+    EXPIRY, EVICT_CAFFEINE, EVICT_ALL, CLEAR
 }

@@ -104,8 +104,8 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
             synchronized (LOCKS.computeIfAbsent(key, o -> new Object())) {
                 caffeineCache.put(key, value);
                 redisCache.put(key, value);
-                // 发送事件通知，更新其他节点的key
-                cacheEventPublisher.publish(new CacheEvent(key, value, CacheEventEnum.PUT.name()));
+                // 发送事件通知，删除其他节点的caffeine cache
+                cacheEventPublisher.publish(new CacheEvent(key, CacheEventEnum.EVICT_CAFFEINE.name()));
             }
         } finally {
             LOCKS.remove(key);
@@ -119,8 +119,8 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
                 redisCache.put(key, value);
                 String keySerialization = redisCache.getCacheConfiguration().getKeySerializationPair().read(ByteBuffer.wrap(key.getBytes()));
                 redisTemplate.opsForValue().set(keySerialization, value, duration);
-                // 发送事件通知，更新其他节点的key
-                cacheEventPublisher.publish(new CacheEvent(key, value, duration, CacheEventEnum.PUT.name()));
+                // 发送事件通知，删除其他节点的caffeine cache
+                cacheEventPublisher.publish(new CacheEvent(key, duration, CacheEventEnum.EVICT_CAFFEINE.name()));
             }
         } finally {
             LOCKS.remove(key);
@@ -134,7 +134,7 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
                 caffeineCache.evict(key);
                 redisCache.evict(key);
                 // 发送事件通知，删除其他节点的key
-                cacheEventPublisher.publish(new CacheEvent(key, CacheEventEnum.EVICT.name()));
+                cacheEventPublisher.publish(new CacheEvent(key, CacheEventEnum.EVICT_ALL.name()));
             }
         } finally {
             LOCKS.remove(key);

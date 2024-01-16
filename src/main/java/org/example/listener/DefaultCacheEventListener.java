@@ -10,9 +10,6 @@ import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.core.RedisTemplate;
 
-import java.nio.ByteBuffer;
-import java.time.Duration;
-
 /**
  * 基于Redis事件发布订阅机制实现的分布式缓存数据同步监听器，需要配置bean：
  * <p>{@code @Bean}
@@ -54,25 +51,18 @@ public class DefaultCacheEventListener implements MessageListener {
             return;
         }
         Object key = cacheEvent.getKey();
-        Object value = cacheEvent.getValue();
-        Duration duration = cacheEvent.getDuration();
         String type = cacheEvent.getType();
-        if (CacheEventEnum.PUT.name().equals(type)) {
-            log.debug("cache key put:{}", key);
+        if (CacheEventEnum.EVICT_CAFFEINE.name().equals(type)) {
+            log.debug("cache key evict:{}", key);
             try {
                 synchronized (CaffeineRedisCache.LOCKS.computeIfAbsent(key, o -> new Object())) {
-                    caffeineCache.put(key, value);
-                    redisCache.put(key, value);
-                    if (duration != null) {
-                        String keySerialization = redisCache.getCacheConfiguration().getKeySerializationPair().read(ByteBuffer.wrap(key.toString().getBytes()));
-                        redisTemplate.opsForValue().set(keySerialization, value, duration);
-                    }
+                    caffeineCache.evict(key);
                 }
             } finally {
                 CaffeineRedisCache.LOCKS.remove(key);
             }
         }
-        if (CacheEventEnum.EVICT.name().equals(type)) {
+        if (CacheEventEnum.EVICT_ALL.name().equals(type)) {
             log.debug("cache key evict:{}", key);
             try {
                 synchronized (CaffeineRedisCache.LOCKS.computeIfAbsent(key, o -> new Object())) {
