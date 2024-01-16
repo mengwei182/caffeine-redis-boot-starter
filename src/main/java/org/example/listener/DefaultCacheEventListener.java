@@ -16,7 +16,7 @@ import java.time.Duration;
 /**
  * 基于Redis事件发布订阅机制实现的分布式缓存数据同步监听器，需要配置bean：
  * <p>{@code @Bean}
- * <p>{@code public MessageListener redisMessageListener(CaffeineRedisCache caffeineRedisCache, RedisMessageListenerContainer redisMessageListenerContainer)} {
+ * <p>{@code public DefaultCacheEventListener defaultCacheEventListener(CaffeineRedisCache caffeineRedisCache, RedisMessageListenerContainer redisMessageListenerContainer)} {
  * <p>{@code DefaultCacheEventListener defaultCacheEventListener = new DefaultCacheEventListener(caffeineRedisCache.getCaffeineCache(), caffeineRedisCache.getRedisCache(), caffeineRedisCache.getRedisTemplate());}
  * <p>{@code // 自定义事件监听通道}
  * <p>{@code redisMessageListenerContainer.addMessageListener(defaultCacheEventListener, new ChannelTopic(ListenerChannel.CACHE_CHANNEL));}
