@@ -14,19 +14,12 @@ import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import org.example.listener.ListenerChannel;
 import org.example.listener.RedisKeyExpirationEventMessageListener;
-import org.example.listener.RedisMessageListener;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.cache.CacheProperties;
-import org.springframework.cache.caffeine.CaffeineCache;
-import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
-import org.springframework.data.redis.cache.RedisCache;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
-import org.springframework.data.redis.cache.RedisCacheManager;
-import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
@@ -70,26 +63,15 @@ public class CaffeineRedisCacheAutoConfiguration {
         return redisTemplate;
     }
 
-    @Bean
-    public CaffeineCache caffeineCache() {
-        CaffeineCacheManager caffeineCacheManager = new CaffeineCacheManager();
-        return (CaffeineCache) caffeineCacheManager.getCache(CaffeineCache.class.getName());
-    }
-
-    @Bean
-    public RedisCache redisCache(RedisCacheConfiguration redisCacheConfiguration, RedisConnectionFactory redisConnectionFactory) {
-        RedisCacheManager redisCacheManager = RedisCacheManager.builder().cacheDefaults(redisCacheConfiguration).cacheWriter(RedisCacheWriter.lockingRedisCacheWriter(redisConnectionFactory)).build();
-        return (RedisCache) redisCacheManager.getCache(RedisCache.class.getName());
-    }
-
     /**
-     * Caffeine-Redis缓存组件
+     * 默认的Caffeine-Redis缓存组件
      *
      * @return
      */
     @Bean
-    public CaffeineRedisCache caffeineRedisCache() {
-        return new CaffeineRedisCache();
+    public CaffeineRedisCache caffeineRedisCache(RedisCacheConfiguration redisCacheConfiguration, RedisConnectionFactory connectionFactory, RedisTemplate<String, Object> caffeineRedisTemplate) {
+        CaffeineRedisCacheManager caffeineRedisCacheManager = new CaffeineRedisCacheManager(redisCacheConfiguration, connectionFactory, caffeineRedisTemplate);
+        return (CaffeineRedisCache) caffeineRedisCacheManager.getCache(CaffeineRedisCache.class.getName());
     }
 
     @Bean
@@ -132,18 +114,10 @@ public class CaffeineRedisCacheAutoConfiguration {
     }
 
     @Bean
-    public RedisKeyExpirationEventMessageListener redisKeyExpirationEventMessageListener(RedisMessageListenerContainer redisMessageListenerContainer) {
-        RedisKeyExpirationEventMessageListener redisKeyExpirationEventMessageListener = new RedisKeyExpirationEventMessageListener(redisMessageListenerContainer);
+    public RedisKeyExpirationEventMessageListener redisKeyExpirationEventMessageListener(RedisMessageListenerContainer redisMessageListenerContainer, CaffeineRedisCache caffeineRedisCache) {
+        RedisKeyExpirationEventMessageListener redisKeyExpirationEventMessageListener = new RedisKeyExpirationEventMessageListener(redisMessageListenerContainer, caffeineRedisCache);
         // key过期监听通道
         redisMessageListenerContainer.addMessageListener(redisKeyExpirationEventMessageListener, new PatternTopic(ListenerChannel.KEY_EXPIRATION_CHANNEL));
         return redisKeyExpirationEventMessageListener;
-    }
-
-    @Bean
-    public RedisMessageListener redisMessageListener(RedisMessageListenerContainer redisMessageListenerContainer) {
-        RedisMessageListener redisMessageListener = new RedisMessageListener();
-        // 自定义事件监听通道
-        redisMessageListenerContainer.addMessageListener(redisMessageListener, new ChannelTopic(ListenerChannel.CACHE_CHANNEL));
-        return redisMessageListener;
     }
 }
