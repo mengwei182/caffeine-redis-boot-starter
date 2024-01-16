@@ -12,7 +12,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.util.Assert;
 
-import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -100,25 +99,17 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
 
     @Override
     public void put(@NonNull Object key, Object value) {
-        try {
-            synchronized (LOCKS.computeIfAbsent(key, o -> new Object())) {
-                caffeineCache.put(key, value);
-                redisCache.put(key, value);
-                // 发送事件通知，删除其他节点的caffeine cache
-                cacheEventPublisher.publish(new CacheEvent(key, CacheEventEnum.EVICT_CAFFEINE.name()));
-            }
-        } finally {
-            LOCKS.remove(key);
-        }
+        put(key, value, null);
     }
 
-    public void put(String key, Object value, Duration duration) {
+    public void put(Object key, Object value, Duration duration) {
         try {
             synchronized (LOCKS.computeIfAbsent(key, o -> new Object())) {
                 caffeineCache.put(key, value);
                 redisCache.put(key, value);
-                String keySerialization = redisCache.getCacheConfiguration().getKeySerializationPair().read(ByteBuffer.wrap(key.getBytes()));
-                redisTemplate.opsForValue().set(keySerialization, value, duration);
+                if (duration != null) {
+                    redisTemplate.opsForValue().set(key.toString(), value, duration);
+                }
                 // 发送事件通知，删除其他节点的caffeine cache
                 cacheEventPublisher.publish(new CacheEvent(key, duration, CacheEventEnum.EVICT_CAFFEINE.name()));
             }
