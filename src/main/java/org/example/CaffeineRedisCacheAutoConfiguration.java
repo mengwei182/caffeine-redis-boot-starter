@@ -4,6 +4,7 @@ import org.example.listener.ListenerChannel;
 import org.example.listener.RedisKeyExpirationEventMessageListener;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.cache.CacheProperties;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -37,8 +38,8 @@ public class CaffeineRedisCacheAutoConfiguration {
      * @return
      */
     @Bean
-    public CaffeineRedisCache caffeineRedisCache(RedisCacheConfiguration redisCacheConfiguration, RedisConnectionFactory connectionFactory, RedisTemplate<String, Object> caffeineRedisTemplate) {
-        CaffeineRedisCacheManager caffeineRedisCacheManager = new CaffeineRedisCacheManager(redisCacheConfiguration, connectionFactory, caffeineRedisTemplate);
+    public CaffeineRedisCache caffeineRedisCache(RedisCacheConfiguration redisCacheConfiguration, RedisConnectionFactory redisConnectionFactory, RedisTemplate<String, Object> caffeineRedisTemplate) {
+        CaffeineRedisCacheManager caffeineRedisCacheManager = new CaffeineRedisCacheManager(redisCacheConfiguration, redisConnectionFactory, caffeineRedisTemplate);
         return (CaffeineRedisCache) caffeineRedisCacheManager.getCache(CaffeineRedisCache.class.getName());
     }
 
@@ -75,9 +76,10 @@ public class CaffeineRedisCacheAutoConfiguration {
     }
 
     @Bean
-    public RedisMessageListenerContainer redisMessageListenerContainer(RedisConnectionFactory connectionFactory) {
+    @ConditionalOnMissingBean(RedisMessageListenerContainer.class)
+    public RedisMessageListenerContainer redisMessageListenerContainer(RedisConnectionFactory redisConnectionFactory) {
         RedisMessageListenerContainer redisMessageListenerContainer = new RedisMessageListenerContainer();
-        redisMessageListenerContainer.setConnectionFactory(connectionFactory);
+        redisMessageListenerContainer.setConnectionFactory(redisConnectionFactory);
         return redisMessageListenerContainer;
     }
 
