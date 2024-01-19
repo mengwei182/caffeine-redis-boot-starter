@@ -139,4 +139,14 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
         // 发送事件通知，清空其他节点的key
         cacheEventPublisher.publish(new CacheEvent(CacheEventEnum.CLEAR.name()));
     }
+
+    /**
+     * 依托redis向指定通道发送事件
+     *
+     * @param channel 通道
+     * @param message 信息
+     */
+    public void convertAndSend(String channel, Object message) {
+        redisTemplate.convertAndSend(channel, message);
+    }
 }
