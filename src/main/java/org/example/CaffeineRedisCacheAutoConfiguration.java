@@ -1,5 +1,6 @@
 package org.example;
 
+import org.example.listener.DefaultCacheEventListener;
 import org.example.listener.ListenerChannel;
 import org.example.listener.RedisKeyExpirationEventMessageListener;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -9,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
@@ -89,5 +91,13 @@ public class CaffeineRedisCacheAutoConfiguration {
         // key过期监听通道
         redisMessageListenerContainer.addMessageListener(redisKeyExpirationEventMessageListener, new PatternTopic(ListenerChannel.KEY_EXPIRATION_CHANNEL));
         return redisKeyExpirationEventMessageListener;
+    }
+
+    @Bean
+    public DefaultCacheEventListener defaultCacheEventListener(CaffeineRedisCache caffeineRedisCache, RedisMessageListenerContainer redisMessageListenerContainer) {
+        DefaultCacheEventListener defaultCacheEventListener = new DefaultCacheEventListener(caffeineRedisCache.getCaffeineCache(), caffeineRedisCache.getRedisCache(), caffeineRedisCache.getRedisTemplate());
+        // 自定义事件监听通道
+        redisMessageListenerContainer.addMessageListener(defaultCacheEventListener, new ChannelTopic(ListenerChannel.CACHE_CHANNEL));
+        return defaultCacheEventListener;
     }
 }

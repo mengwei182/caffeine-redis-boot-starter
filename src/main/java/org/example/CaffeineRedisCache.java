@@ -29,6 +29,7 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
     private final RedisCache redisCache;
     @Getter
     private final RedisTemplate<String, Object> redisTemplate;
+    @Getter
     @Setter
     private CacheEventPublisher cacheEventPublisher;
 

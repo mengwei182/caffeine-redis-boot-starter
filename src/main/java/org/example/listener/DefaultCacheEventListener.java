@@ -11,16 +11,9 @@ import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.core.RedisTemplate;
 
 /**
- * 基于Redis事件发布订阅机制实现的分布式缓存数据同步监听器，需要配置bean：
- * <p>{@code @Bean}
- * <p>{@code public DefaultCacheEventListener defaultCacheEventListener(CaffeineRedisCache caffeineRedisCache, RedisMessageListenerContainer redisMessageListenerContainer)} {
- * <p>{@code DefaultCacheEventListener defaultCacheEventListener = new DefaultCacheEventListener(caffeineRedisCache.getCaffeineCache(), caffeineRedisCache.getRedisCache(), caffeineRedisCache.getRedisTemplate());}
- * <p>{@code // 自定义事件监听通道}
- * <p>{@code redisMessageListenerContainer.addMessageListener(defaultCacheEventListener, new ChannelTopic(ListenerChannel.CACHE_CHANNEL));}
- * <p>{@code return defaultCacheEventListener;}
- * <p>{@code }}
- * <p><b>不建议使用该监听器</b>，因为redis的消息订阅发布不会对消息做状态和一致性处理，所以很有可能出现订阅方接收不到消息导致分布式CaffeineRedisCache数据无法满足一致性。
- * <p>建议使用MQ中间件作为CaffeineRedisCache事件监听器，同时做消息的状态和一致性处理，保证分布式CaffeineRedisCache的数据一致性。
+ * 基于Redis事件发布订阅机制实现的分布式缓存数据同步监听器。
+ * <p><b>不建议使用该监听器</b>，因为redis的消息订阅发布不会对消息做一致性验证，所以有可能出现订阅方接收不到消息导致分布式CaffeineRedisCache数据不一致。
+ * <p>建议使用MQ中间件作为CaffeineRedisCache事件监听器，保证分布式CaffeineRedisCache的数据一致性。
  *
  * @author lihui
  * @since 2024/1/16
