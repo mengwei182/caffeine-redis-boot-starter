@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.example.event.CacheEvent;
 import org.example.event.CacheEventEnum;
+import org.example.listener.KeyExpirationEventListener;
 import org.example.publisher.CacheEventPublisher;
 import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.cache.support.AbstractValueAdaptingCache;
@@ -32,14 +33,18 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
     @Getter
     @Setter
     private CacheEventPublisher cacheEventPublisher;
+    @Getter
+    @Setter
+    private KeyExpirationEventListener keyExpirationEventListener;
 
-    public CaffeineRedisCache(String name, CaffeineCache caffeineCache, RedisCache redisCache, RedisTemplate<String, Object> redisTemplate, CacheEventPublisher cacheEventPublisher) {
+    public CaffeineRedisCache(String name, CaffeineCache caffeineCache, RedisCache redisCache, RedisTemplate<String, Object> redisTemplate, CacheEventPublisher cacheEventPublisher, KeyExpirationEventListener keyExpirationEventListener) {
         super(true);
         this.name = name;
         this.caffeineCache = caffeineCache;
         this.redisCache = redisCache;
         this.redisTemplate = redisTemplate;
         this.cacheEventPublisher = cacheEventPublisher;
+        this.keyExpirationEventListener = keyExpirationEventListener;
     }
 
     @Override

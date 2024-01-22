@@ -1,7 +1,7 @@
 ### 接入说明
 
 集成了caffeine和redis作为缓存工具，caffeine作为一级缓存，redis作为二级缓存。
-基于redis的订阅发布模型和过期key监听机制，支持设置动态的过期时间缓存，支持分布式缓存清理和删除。
+默认基于redis的发布订阅机制和过期key监听机制，支持设置动态的过期时间缓存，支持分布式缓存事件监听和key过期事件监听。
 
 ```
 <!--caffeine redis cache-->
@@ -35,4 +35,12 @@ private CaffeineRedisCache caffeineRedisCache;
 
 ```
 CaffeineRedisCache.setCacheEventPublisher(CacheEventPublisher cacheEventPublisher)
+```
+
+###
+
+替换为自定义的key过期事件监听器：
+
+```
+CaffeineRedisCache.setKeyExpirationEventListener(KeyExpirationEventListener keyExpirationEventListener)
 ```

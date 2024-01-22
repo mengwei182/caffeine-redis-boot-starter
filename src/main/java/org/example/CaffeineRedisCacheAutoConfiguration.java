@@ -2,7 +2,6 @@ package org.example;
 
 import org.example.listener.DefaultCacheEventListener;
 import org.example.listener.ListenerChannel;
-import org.example.listener.RedisKeyExpirationEventMessageListener;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.cache.CacheProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -86,16 +85,10 @@ public class CaffeineRedisCacheAutoConfiguration {
     }
 
     @Bean
-    public RedisKeyExpirationEventMessageListener redisKeyExpirationEventMessageListener(RedisMessageListenerContainer redisMessageListenerContainer, CaffeineRedisCache caffeineRedisCache) {
-        RedisKeyExpirationEventMessageListener redisKeyExpirationEventMessageListener = new RedisKeyExpirationEventMessageListener(redisMessageListenerContainer, caffeineRedisCache);
+    public DefaultCacheEventListener redisKeyExpirationEventMessageListener(RedisMessageListenerContainer redisMessageListenerContainer, CaffeineRedisCache caffeineRedisCache) {
+        DefaultCacheEventListener defaultCacheEventListener = new DefaultCacheEventListener(redisMessageListenerContainer, caffeineRedisCache);
         // key过期监听通道
-        redisMessageListenerContainer.addMessageListener(redisKeyExpirationEventMessageListener, new PatternTopic(ListenerChannel.KEY_EXPIRATION_CHANNEL));
-        return redisKeyExpirationEventMessageListener;
-    }
-
-    @Bean
-    public DefaultCacheEventListener defaultCacheEventListener(CaffeineRedisCache caffeineRedisCache, RedisMessageListenerContainer redisMessageListenerContainer) {
-        DefaultCacheEventListener defaultCacheEventListener = new DefaultCacheEventListener(caffeineRedisCache.getCaffeineCache(), caffeineRedisCache.getRedisCache(), caffeineRedisCache.getRedisTemplate());
+        redisMessageListenerContainer.addMessageListener(defaultCacheEventListener, new PatternTopic(ListenerChannel.KEY_EXPIRATION_CHANNEL));
         // 自定义事件监听通道
         redisMessageListenerContainer.addMessageListener(defaultCacheEventListener, new ChannelTopic(ListenerChannel.CACHE_CHANNEL));
         return defaultCacheEventListener;

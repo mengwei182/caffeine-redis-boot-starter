@@ -1,5 +1,6 @@
 package org.example;
 
+import org.example.listener.DefaultKeyExpirationEventListener;
 import org.example.publisher.DefaultCacheEventPublisher;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -42,7 +43,7 @@ public class CaffeineRedisCacheManager implements CacheManager {
             CaffeineCache caffeineCache = (CaffeineCache) caffeineCacheManager.getCache(name);
             RedisCacheManager redisCacheManager = RedisCacheManager.builder().cacheDefaults(redisCacheConfiguration).cacheWriter(RedisCacheWriter.lockingRedisCacheWriter(redisConnectionFactory)).build();
             RedisCache redisCache = (RedisCache) redisCacheManager.getCache(name);
-            cache = this.cacheMap.computeIfAbsent(name, v -> new CaffeineRedisCache(name, caffeineCache, redisCache, redisTemplate, new DefaultCacheEventPublisher(redisTemplate)));
+            cache = this.cacheMap.computeIfAbsent(name, v -> new CaffeineRedisCache(name, caffeineCache, redisCache, redisTemplate, new DefaultCacheEventPublisher(redisTemplate), new DefaultKeyExpirationEventListener(caffeineCache, redisCache)));
         }
         return cache;
     }
