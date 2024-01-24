@@ -16,6 +16,7 @@ import org.springframework.util.Assert;
 import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author lihui
@@ -23,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class CaffeineRedisCache extends AbstractValueAdaptingCache {
     public static final ConcurrentHashMap<Object, Object> LOCKS = new ConcurrentHashMap<>();
+    private static final String DURATION_VALUE = "DURATION_VALUE";
     private final String name;
     @Getter
     private final CaffeineCache caffeineCache;
@@ -108,13 +110,20 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
         put(key, value, null);
     }
 
+    /**
+     * 设置一个带有过期时间的缓存
+     *
+     * @param key
+     * @param value
+     * @param duration 过期时间，最后会转为毫秒单位
+     */
     public void put(Object key, Object value, Duration duration) {
         try {
             synchronized (LOCKS.computeIfAbsent(key, o -> new Object())) {
                 caffeineCache.put(key, value);
                 redisCache.put(key, value);
                 if (duration != null) {
-                    redisTemplate.opsForValue().set(key.toString(), value, duration);
+                    redisTemplate.opsForValue().set(key.toString(), DURATION_VALUE, duration.toMillis(), TimeUnit.MILLISECONDS);
                 }
                 // 发送事件通知，删除其他节点的caffeine cache
                 cacheEventPublisher.publish(new CacheEvent(key, duration, CacheEventEnum.EVICT_CAFFEINE.name()));
@@ -144,6 +153,17 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
         redisCache.clear();
         // 发送事件通知，清空其他节点的key
         cacheEventPublisher.publish(new CacheEvent(CacheEventEnum.CLEAR.name()));
+    }
+
+    /**
+     * 获取指定key的过期时间
+     *
+     * @param key
+     * @return 单位为毫秒
+     */
+    public long getExpire(Object key) {
+        Long expire = redisTemplate.getExpire(key.toString());
+        return expire == null ? 0 : expire;
     }
 
     /**
