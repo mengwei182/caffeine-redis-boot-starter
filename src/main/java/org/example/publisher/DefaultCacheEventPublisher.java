@@ -1,6 +1,6 @@
 package org.example.publisher;
 
-import org.example.listener.ListenerChannel;
+import org.example.listener.Topic;
 import org.springframework.data.redis.core.RedisTemplate;
 
 /**
@@ -19,6 +19,6 @@ public class DefaultCacheEventPublisher implements CacheEventPublisher {
     @Override
     public void publish(Object event) {
         // 发送redis事件通知，更新其他节点的key
-        redisTemplate.convertAndSend(ListenerChannel.CACHE_CHANNEL, event);
+        redisTemplate.convertAndSend(Topic.CACHE_CHANNEL, event);
     }
 }

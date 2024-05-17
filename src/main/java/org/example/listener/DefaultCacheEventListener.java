@@ -33,7 +33,7 @@ public class DefaultCacheEventListener extends KeyExpirationEventMessageListener
             return;
         }
         // key过期事件
-        if (channel.equals(ListenerChannel.KEY_EXPIRATION_CHANNEL)) {
+        if (channel.equals(Topic.KEY_EXPIRATION_CHANNEL)) {
             String key = caffeineRedisCache.getRedisTemplate().getStringSerializer().deserialize(message.getBody());
             if (key == null) {
                 return;
@@ -43,7 +43,7 @@ public class DefaultCacheEventListener extends KeyExpirationEventMessageListener
             return;
         }
         // 其他事件
-        if (channel.equals(ListenerChannel.CACHE_CHANNEL)) {
+        if (channel.equals(Topic.CACHE_CHANNEL)) {
             CacheEvent cacheEvent = (CacheEvent) caffeineRedisCache.getRedisTemplate().getValueSerializer().deserialize(message.getBody());
             if (cacheEvent == null) {
                 return;
