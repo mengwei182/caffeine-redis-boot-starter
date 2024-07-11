@@ -6,7 +6,7 @@ import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.data.redis.cache.RedisCache;
 
 /**
- * 默认key过期监听器
+ * 默认key过期监听器，该监听器会删除本地的caffeine cache中对应的key
  *
  * @author lihui
  * @since 2024/1/15
@@ -14,11 +14,9 @@ import org.springframework.data.redis.cache.RedisCache;
 @Slf4j
 public class DefaultKeyExpirationEventListener implements KeyExpirationEventListener {
     private final CaffeineCache caffeineCache;
-    private final RedisCache redisCache;
 
     public DefaultKeyExpirationEventListener(CaffeineCache caffeineCache, RedisCache redisCache) {
         this.caffeineCache = caffeineCache;
-        this.redisCache = redisCache;
     }
 
     @Override
@@ -31,8 +29,6 @@ public class DefaultKeyExpirationEventListener implements KeyExpirationEventList
             synchronized (CaffeineRedisCache.LOCKS.computeIfAbsent(key, o -> new Object())) {
                 // 同步删除caffeine缓存
                 caffeineCache.evict(key);
-                // 同步删除redis缓存
-                redisCache.evict(key);
             }
         } finally {
             CaffeineRedisCache.LOCKS.remove(key);

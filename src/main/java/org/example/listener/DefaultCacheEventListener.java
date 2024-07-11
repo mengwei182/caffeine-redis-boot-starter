@@ -8,6 +8,9 @@ import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.listener.KeyExpirationEventMessageListener;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+import org.springframework.data.redis.serializer.RedisSerializer;
+
+import java.nio.ByteBuffer;
 
 /**
  * 基于Redis事件发布订阅机制实现的分布式缓存数据同步监听器。
@@ -28,13 +31,13 @@ public class DefaultCacheEventListener extends KeyExpirationEventMessageListener
 
     @Override
     public void onMessage(Message message, byte[] pattern) {
-        String channel = caffeineRedisCache.getRedisTemplate().getStringSerializer().deserialize(message.getChannel());
+        String channel = RedisSerializer.string().deserialize(message.getChannel());
         if (channel == null) {
             return;
         }
         // key过期事件
-        if (channel.equals(Topic.KEY_EXPIRATION_CHANNEL)) {
-            String key = caffeineRedisCache.getRedisTemplate().getStringSerializer().deserialize(message.getBody());
+        if (Topic.KEY_EXPIRATION_CHANNEL.equals(new String(pattern))) {
+            String key = RedisSerializer.string().deserialize(message.getBody());
             if (key == null) {
                 return;
             }
@@ -44,10 +47,7 @@ public class DefaultCacheEventListener extends KeyExpirationEventMessageListener
         }
         // 其他事件
         if (channel.equals(Topic.CACHE_CHANNEL)) {
-            CacheEvent cacheEvent = (CacheEvent) caffeineRedisCache.getRedisTemplate().getValueSerializer().deserialize(message.getBody());
-            if (cacheEvent == null) {
-                return;
-            }
+            CacheEvent cacheEvent = (CacheEvent) caffeineRedisCache.getRedisCache().getCacheConfiguration().getValueSerializationPair().read(ByteBuffer.wrap(message.getBody()));
             Object key = cacheEvent.getKey();
             String type = cacheEvent.getType();
             if (CacheEventEnum.EVICT_CAFFEINE.name().equals(type)) {

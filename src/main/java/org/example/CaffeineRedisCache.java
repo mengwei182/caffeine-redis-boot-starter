@@ -11,12 +11,13 @@ import org.springframework.cache.support.AbstractValueAdaptingCache;
 import org.springframework.data.redis.cache.RedisCache;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author lihui
@@ -24,14 +25,11 @@ import java.util.concurrent.TimeUnit;
  */
 public class CaffeineRedisCache extends AbstractValueAdaptingCache {
     public static final ConcurrentHashMap<Object, Object> LOCKS = new ConcurrentHashMap<>();
-    private static final String DURATION_VALUE = "DURATION_VALUE";
     private final String name;
     @Getter
     private final CaffeineCache caffeineCache;
     @Getter
     private final RedisCache redisCache;
-    @Getter
-    private final RedisTemplate<String, Object> redisTemplate;
     @Getter
     @Setter
     private CacheEventPublisher cacheEventPublisher;
@@ -39,12 +37,11 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
     @Setter
     private KeyExpirationEventListener keyExpirationEventListener;
 
-    public CaffeineRedisCache(String name, CaffeineCache caffeineCache, RedisCache redisCache, RedisTemplate<String, Object> redisTemplate, CacheEventPublisher cacheEventPublisher, KeyExpirationEventListener keyExpirationEventListener) {
+    public CaffeineRedisCache(String name, CaffeineCache caffeineCache, RedisCache redisCache, CacheEventPublisher cacheEventPublisher, KeyExpirationEventListener keyExpirationEventListener) {
         super(true);
         this.name = name;
         this.caffeineCache = caffeineCache;
         this.redisCache = redisCache;
-        this.redisTemplate = redisTemplate;
         this.cacheEventPublisher = cacheEventPublisher;
         this.keyExpirationEventListener = keyExpirationEventListener;
     }
@@ -115,16 +112,15 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
      *
      * @param key
      * @param value
-     * @param duration 过期时间，最后会转为毫秒单位
+     * @param duration 过期时间
      */
-    public void put(Object key, Object value, Duration duration) {
+    public void put(Object key, Object value, @Nullable Duration duration) {
         try {
             synchronized (LOCKS.computeIfAbsent(key, o -> new Object())) {
                 caffeineCache.put(key, value);
-                redisCache.put(key, value);
-                if (duration != null) {
-                    redisTemplate.opsForValue().set(key.toString(), DURATION_VALUE, duration.toMillis(), TimeUnit.MILLISECONDS);
-                }
+                ByteBuffer keyWrite = redisCache.getCacheConfiguration().getKeySerializationPair().write(key.toString());
+                ByteBuffer valueWrite = redisCache.getCacheConfiguration().getValueSerializationPair().write(value);
+                redisCache.getNativeCache().put(redisCache.getName(), keyWrite.array(), valueWrite.array(), duration);
                 // 发送事件通知，删除其他节点的caffeine cache
                 cacheEventPublisher.publish(new CacheEvent(key, duration, CacheEventEnum.EVICT_CAFFEINE.name()));
             }
@@ -153,26 +149,5 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
         redisCache.clear();
         // 发送事件通知，清空其他节点的key
         cacheEventPublisher.publish(new CacheEvent(CacheEventEnum.CLEAR.name()));
-    }
-
-    /**
-     * 获取指定key的过期时间
-     *
-     * @param key
-     * @return 单位为毫秒
-     */
-    public long getExpire(Object key) {
-        Long expire = redisTemplate.getExpire(key.toString());
-        return expire == null ? 0 : expire;
-    }
-
-    /**
-     * 依托redis向指定通道发送事件
-     *
-     * @param channel 通道
-     * @param message 信息
-     */
-    public void convertAndSend(String channel, Object message) {
-        redisTemplate.convertAndSend(channel, message);
     }
 }
