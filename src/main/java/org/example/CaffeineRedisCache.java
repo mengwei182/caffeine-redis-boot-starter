@@ -62,7 +62,7 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
             // 设置到一级缓存里
             caffeineCache.put(key, value);
             // 发送事件通知，更新其他节点的caffeine cache
-            cacheEventPublisher.publish(new CacheEvent(key, CacheEventEnum.UPDATE_KEY.name()));
+            cacheEventPublisher.publish(new CacheEvent(key, value, CacheEventEnum.UPDATE_KEY.name()));
             return value;
         }
         return null;
@@ -81,7 +81,7 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
             // 设置到一级缓存里
             caffeineCache.put(key, value);
             // 发送事件通知，更新其他节点的caffeine cache
-            cacheEventPublisher.publish(new CacheEvent(key, CacheEventEnum.UPDATE_KEY.name()));
+            cacheEventPublisher.publish(new CacheEvent(key, value, CacheEventEnum.UPDATE_KEY.name()));
             return value;
         }
         return null;
@@ -114,7 +114,7 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
             // 设置到一级缓存里
             caffeineCache.put(key, call);
             // 发送事件通知，更新其他节点的caffeine cache
-            cacheEventPublisher.publish(new CacheEvent(key, CacheEventEnum.UPDATE_KEY.name()));
+            cacheEventPublisher.publish(new CacheEvent(key, call, CacheEventEnum.UPDATE_KEY.name()));
         }
         return call;
     }
@@ -139,7 +139,7 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
                 ByteBuffer valueWrite = redisCache.getCacheConfiguration().getValueSerializationPair().write(value);
                 redisCache.getNativeCache().put(redisCache.getName(), keyWrite.array(), valueWrite.array(), duration);
                 // 发送事件通知，更新其他节点的caffeine cache
-                cacheEventPublisher.publish(new CacheEvent(key, CacheEventEnum.UPDATE_KEY.name()));
+                cacheEventPublisher.publish(new CacheEvent(key, value, CacheEventEnum.UPDATE_KEY.name()));
             }
         } finally {
             LOCKS.remove(key);
