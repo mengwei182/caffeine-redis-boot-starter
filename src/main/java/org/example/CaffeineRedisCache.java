@@ -9,7 +9,6 @@ import org.example.publisher.CacheEventPublisher;
 import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.cache.support.AbstractValueAdaptingCache;
 import org.springframework.data.redis.cache.RedisCache;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -48,26 +47,41 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
 
     @Override
     public <T> T get(@NonNull Object key, Class<T> type) {
-        // 优先lookup查找，如果查到有效值则直接从一级缓存取值即可，如果没有查到则表明key没有关联值
-        Object value = lookup(key);
-        if (value == null) {
-            return null;
+        return lookup(key, type);
+    }
+
+    private <T> T lookup(@NonNull Object key, Class<T> type) {
+        Assert.notNull(caffeineCache, "caffeine cache not found");
+        T value = caffeineCache.get(key, type);
+        if (value != null) {
+            return value;
         }
-        return caffeineCache.get(key, type);
+        Assert.notNull(redisCache, "redis cache not found");
+        value = redisCache.get(key, type);
+        if (value != null) {
+            // 设置到一级缓存里
+            caffeineCache.put(key, value);
+            // 发送事件通知，更新其他节点的caffeine cache
+            cacheEventPublisher.publish(new CacheEvent(key, CacheEventEnum.UPDATE_KEY.name()));
+            return value;
+        }
+        return null;
     }
 
     @Override
     protected Object lookup(@NonNull Object key) {
-        Assert.notNull(caffeineCache, "caffeine cache not found:" + key);
+        Assert.notNull(caffeineCache, "caffeine cache not found");
         Object value = caffeineCache.get(key, Object.class);
         if (value != null) {
             return value;
         }
-        Assert.notNull(redisCache, "redis cache not found:" + key);
+        Assert.notNull(redisCache, "redis cache not found");
         value = redisCache.get(key, Object.class);
         if (value != null) {
             // 设置到一级缓存里
             caffeineCache.put(key, value);
+            // 发送事件通知，更新其他节点的caffeine cache
+            cacheEventPublisher.publish(new CacheEvent(key, CacheEventEnum.UPDATE_KEY.name()));
             return value;
         }
         return null;
@@ -87,19 +101,22 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
 
     @Override
     public <T> T get(@NonNull Object key, @NonNull Callable<T> valueLoader) {
-        try {
-            T call = valueLoader.call();
-            if (call == null) {
-                return null;
-            }
-            Object value = lookup(key);
-            if (value == null) {
-                put(key, call);
-            }
+        return lookup(key, valueLoader);
+    }
+
+    private <T> T lookup(@NonNull Object key, @NonNull Callable<T> valueLoader) {
+        T call = caffeineCache.get(key, valueLoader);
+        if (call != null) {
             return call;
-        } catch (Exception e) {
-            return null;
         }
+        call = redisCache.get(key, valueLoader);
+        if (call != null) {
+            // 设置到一级缓存里
+            caffeineCache.put(key, call);
+            // 发送事件通知，更新其他节点的caffeine cache
+            cacheEventPublisher.publish(new CacheEvent(key, CacheEventEnum.UPDATE_KEY.name()));
+        }
+        return call;
     }
 
     @Override
@@ -121,8 +138,8 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
                 ByteBuffer keyWrite = redisCache.getCacheConfiguration().getKeySerializationPair().write(key.toString());
                 ByteBuffer valueWrite = redisCache.getCacheConfiguration().getValueSerializationPair().write(value);
                 redisCache.getNativeCache().put(redisCache.getName(), keyWrite.array(), valueWrite.array(), duration);
-                // 发送事件通知，删除其他节点的caffeine cache
-                cacheEventPublisher.publish(new CacheEvent(key, duration, CacheEventEnum.EVICT_CAFFEINE.name()));
+                // 发送事件通知，更新其他节点的caffeine cache
+                cacheEventPublisher.publish(new CacheEvent(key, CacheEventEnum.UPDATE_KEY.name()));
             }
         } finally {
             LOCKS.remove(key);
@@ -136,7 +153,7 @@ public class CaffeineRedisCache extends AbstractValueAdaptingCache {
                 caffeineCache.evict(key);
                 redisCache.evict(key);
                 // 发送事件通知，删除其他节点的key
-                cacheEventPublisher.publish(new CacheEvent(key, CacheEventEnum.EVICT_ALL.name()));
+                cacheEventPublisher.publish(new CacheEvent(key, CacheEventEnum.EVICT_KEY.name()));
             }
         } finally {
             LOCKS.remove(key);

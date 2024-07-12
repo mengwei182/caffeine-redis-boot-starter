@@ -13,7 +13,6 @@ import java.time.Duration;
 public class CacheEvent implements Serializable {
     private Object key;
     private Object value;
-    private Duration duration;
     private String type;
 
     public CacheEvent(String type) {
@@ -28,13 +27,6 @@ public class CacheEvent implements Serializable {
     public CacheEvent(Object key, Object value, String type) {
         this.key = key;
         this.value = value;
-        this.type = type;
-    }
-
-    public CacheEvent(Object key, Object value, Duration duration, String type) {
-        this.key = key;
-        this.value = value;
-        this.duration = duration;
         this.type = type;
     }
 }

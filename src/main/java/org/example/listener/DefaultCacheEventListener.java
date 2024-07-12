@@ -49,33 +49,22 @@ public class DefaultCacheEventListener extends KeyExpirationEventMessageListener
         if (channel.equals(Topic.CACHE_CHANNEL)) {
             CacheEvent cacheEvent = (CacheEvent) caffeineRedisCache.getRedisCache().getCacheConfiguration().getValueSerializationPair().read(ByteBuffer.wrap(message.getBody()));
             Object key = cacheEvent.getKey();
+            Object value = cacheEvent.getValue();
             String type = cacheEvent.getType();
-            if (CacheEventEnum.EVICT_CAFFEINE.name().equals(type)) {
-                log.debug("cache key evict:{}", key);
-                try {
-                    synchronized (CaffeineRedisCache.LOCKS.computeIfAbsent(key, o -> new Object())) {
-                        caffeineRedisCache.getCaffeineCache().evict(key);
-                    }
-                } finally {
-                    CaffeineRedisCache.LOCKS.remove(key);
-                }
+            // 更新key
+            if (CacheEventEnum.UPDATE_KEY.name().equals(type)) {
+                log.debug("cache key update:{}", key);
+                caffeineRedisCache.getCaffeineCache().put(key, value);
             }
-            if (CacheEventEnum.EVICT_ALL.name().equals(type)) {
+            // 删除key
+            if (CacheEventEnum.EVICT_KEY.name().equals(type)) {
                 log.debug("cache key evict:{}", key);
-                try {
-                    synchronized (CaffeineRedisCache.LOCKS.computeIfAbsent(key, o -> new Object())) {
-                        caffeineRedisCache.getCaffeineCache().evict(key);
-                        caffeineRedisCache.getRedisCache().evict(key);
-                    }
-                } finally {
-                    CaffeineRedisCache.LOCKS.remove(key);
-                }
+                caffeineRedisCache.getCaffeineCache().evict(key);
             }
-            // 清空缓存类型
+            // 清空全部key
             if (CacheEventEnum.CLEAR.name().equals(type)) {
-                log.debug("cache clear event");
+                log.debug("cache key clear");
                 caffeineRedisCache.getCaffeineCache().clear();
-                caffeineRedisCache.getRedisCache().clear();
             }
         }
     }
